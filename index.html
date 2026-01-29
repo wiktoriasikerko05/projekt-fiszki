@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashMaster Pro (Custom Groups)</title>
+    <style>
+        /* --- DESIGN SYSTEM --- */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--surface);
+            min-height: 100vh;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media(min-width: 800px) {
+            .app-container {
+                min-height: auto;
+                margin: 40px 0;
+                border-radius: var(--radius);
+                height: 800px;
+            }
+        }
+
+        header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { font-size: 1.25rem; margin: 0; color: var(--primary); font-weight: 800; }
+        
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .nav-btn:hover { color: var(--primary); }
+
+        .view { display: none; padding: 20px; flex: 1; overflow-y: auto; }
+        .view.active { display: flex; flex-direction: column; }
+
+        /* DASHBOARD */
+        .deck-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .deck-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: var(--radius);
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .deck-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--primary); }
+        .fab {
+            position: fixed; bottom: 30px; right: 30px;
+            background: var(--primary); color: white;
+            width: 60px; height: 60px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 30px; cursor: pointer; border: none;
+            box-shadow: 0 10px 15px rgba(79, 70, 229, 0.4);
+            z-index: 100;
+        }
+
+        /* STUDY */
+        .progress-bar { width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+
+        .flashcard-container {
+            perspective: 1000px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+
+        .flashcard {
+            width: 100%; max-width: 400px; height: 250px;
+            position: relative; transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            cursor: pointer;
+        }
+        .flashcard.flipped { transform: rotateY(180deg); }
+
+        .face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: bold; text-align: center;
+            border-radius: 20px; background: white;
+            box-shadow: var(--shadow); border: 2px solid #e5e7eb; padding: 20px;
+        }
+        .face-back { transform: rotateY(180deg); background: #f0fdf4; border-color: var(--success); color: #065f46; }
+
+        .study-controls { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn { padding: 12px 24px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        .btn-lg { padding: 15px 40px; font-size: 1rem; }
+        .btn-danger { background: #fee2e2; color: var(--danger); }
+        .btn-success { background: #d1fae5; color: var(--success); }
+        .btn-warning { background: #fef3c7; color: #d97706; }
+
+        /* EDITOR */
+        .editor-form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; background: #f9fafb; padding: 20px; border-radius: var(--radius); border: 1px solid #e5e7eb; }
+        input, select { padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; flex: 1; }
+        
+        /* Styl dla grupy inputów w jednej linii */
+        .input-group { display: flex; gap: 10px; }
+        
+        .form-actions { display: flex; gap: 10px; }
+        .card-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb; background: white; }
+        .card-actions { display: flex; gap: 5px; }
+        
+        .edit-mode-active { border: 2px solid var(--warning); background: #fffbeb; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>FlashMaster <span style="font-weight:400; font-size:0.8em">Pro</span></h1>
+        <nav>
+            <button class="nav-btn" onclick="app.showDashboard()">Dashboard</button>
+            <button class="nav-btn" onclick="app.showEditor()">Edytor</button>
+        </nav>
+    </header>
+
+    <div id="view-dashboard" class="view active">
+        <h2 style="margin-bottom: 20px;">Twoje zestawy</h2>
+        <div class="deck-grid" id="decks-container"></div>
+        <button class="fab" onclick="app.showEditor()">+</button>
+    </div>
+
+    <div id="view-study" class="view">
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <span id="study-category-name" style="font-weight:bold; color:var(--text-muted)">...</span>
+            <span id="study-counter">0 / 0</span>
+        </div>
+        
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+
+        <div class="flashcard-container" onclick="app.flipCard()">
+            <div class="flashcard" id="flashcard">
+                <div class="face face-front" id="card-front">Loading...</div>
+                <div class="face face-back" id="card-back">...</div>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 10px; color: var(--text-muted); font-size: 0.9em;">(Kliknij w kartę, aby odwrócić)</div>
+
+        <div class="study-controls">
+            <button class="btn btn-danger btn-lg" onclick="app.rateCard(false)">Powtórz</button>
+            <button class="btn btn-success btn-lg" onclick="app.rateCard(true)">Umiem</button>
+        </div>
+    </div>
+
+    <div id="view-editor" class="view">
+        <h2>Baza wiedzy</h2>
+        
+        <div class="editor-form" id="editor-form-box">
+            <label id="form-title" style="font-weight:bold; color:var(--text-muted)">Dodaj nową fiszkę</label>
+            
+            <div class="input-group">
+                <select id="input-category">
+                    </select>
+                <button class="btn" style="background:var(--primary); color:white; width:40px; font-size:1.2em; padding:0;" onclick="app.createNewCategory()" title="Dodaj nową grupę">+</button>
+            </div>
+
+            <input type="text" id="input-front" placeholder="Pytanie / Słówko">
+            <input type="text" id="input-back" placeholder="Odpowiedź / Tłumaczenie">
+            
+            <div class="form-actions">
+                <button id="btn-save" class="btn" style="background:var(--primary); color:white; flex:1" onclick="app.handleFormSubmit()">Dodaj</button>
+                <button id="btn-cancel" class="btn" style="background:#e5e7eb; color:var(--text-main); display:none;" onclick="app.cancelEdit()">Anuluj</button>
+            </div>
+        </div>
+
+        <h3>Lista fiszek</h3>
+        <div id="editor-list"></div>
+    </div>
+</div>
+
+<script>
+    const app = {
+        data: {
+            // Domyślne dane
+            cards: JSON.parse(localStorage.getItem('flashmaster_db')) || [
+                { id: 1, category: 'Angielski', front: 'Apple', back: 'Jabłko', known: false },
+                { id: 2, category: 'IT', front: 'Array', back: 'Tablica', known: false },
+            ],
+            currentSession: [],
+            currentIndex: 0,
+            editingId: null,
+            // Lista dodatkowych kategorii (żeby nie znikały, jak są puste na chwilę)
+            tempCategories: []
+        },
+
+        init() {
+            this.updateCategorySelect(); // Generowanie listy przy starcie
+            this.renderDashboard();
+            this.renderEditorList();
+        },
+
+        save() {
+            localStorage.setItem('flashmaster_db', JSON.stringify(this.data.cards));
+            this.updateCategorySelect();
+            this.renderDashboard();
+            this.renderEditorList();
+        },
+
+        switchView(viewId) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        },
+
+        showDashboard() { 
+            this.cancelEdit(); 
+            this.renderDashboard(); 
+            this.switchView('view-dashboard'); 
+        },
+        showEditor() { 
+            this.updateCategorySelect(); 
+            this.renderEditorList(); 
+            this.switchView('view-editor'); 
+        },
+
+        // --- ZARZĄDZANIE KATEGORIAMI (NOWOŚĆ) ---
+        getUniqueCategories() {
+            // Pobieramy kategorie z istniejących kart
+            const fromCards = this.data.cards.map(c => c.category);
+            // Łączymy z tymczasowymi (nowo dodanymi)
+            const all = [...fromCards, ...this.data.tempCategories];
+            // Usuwamy duplikaty i puste
+            return [...new Set(all)].filter(c => c).sort();
+        },
+
+        updateCategorySelect() {
+            const select = document.getElementById('input-category');
+            const currentVal = select.value; // Zapamiętujemy, co było wybrane
+            
+            select.innerHTML = '';
+            
+            const categories = this.getUniqueCategories();
+            
+            // Jeśli nie ma żadnych kategorii, dodaj domyślną
+            if (categories.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = "Ogólne";
+                opt.innerText = "Ogólne";
+                select.appendChild(opt);
+                return;
+            }
+
+            categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                select.appendChild(opt);
+            });
+
+            // Przywracamy wybór jeśli nadal istnieje
+            if (categories.includes(currentVal)) {
+                select.value = currentVal;
+            }
+        },
+
+        createNewCategory() {
+            const newCat = prompt("Podaj nazwę nowej grupy (np. Historia):");
+            if (newCat && newCat.trim() !== "") {
+                const cleanName = newCat.trim();
+                // Dodajemy do tymczasowej listy, żeby pojawiło się w select
+                this.data.tempCategories.push(cleanName);
+                this.updateCategorySelect();
+                // Ustawiamy od razu na wybraną
+                document.getElementById('input-category').value = cleanName;
+            }
+        },
+
+        // --- NAUKA (BEZ ZMIAN) ---
+        startStudy(category) {
+            let sessionCards = this.data.cards.filter(c => c.category === category && !c.known);
+            if(sessionCards.length === 0) {
+                if(confirm("Wszystko umiesz z tej kategorii! Zresetować postępy?")) {
+                     this.data.cards.forEach(c => { if(c.category === category) c.known = false; });
+                     this.save();
+                     sessionCards = this.data.cards.filter(c => c.category === category);
+                } else {
+                    return;
+                }
+            }
+            this.data.currentSession = [...sessionCards];
+            this.data.currentIndex = 0;
+            document.getElementById('study-category-name').innerText = category;
+            this.loadCurrentCard();
+            this.switchView('view-study');
+        },
+
+        loadCurrentCard() {
+            const session = this.data.currentSession;
+            const idx = this.data.currentIndex;
+            if (idx >= session.length) {
+                alert("Gratulacje! Sesja zakończona.");
+                this.showDashboard();
+                return;
+            }
+            const card = session[idx];
+            document.getElementById('card-front').innerText = card.front;
+            document.getElementById('card-back').innerText = card.back;
+            document.getElementById('flashcard').classList.remove('flipped');
+            document.getElementById('study-counter').innerText = `${idx + 1} / ${session.length}`;
+            const percent = ((idx) / session.length) * 100;
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+        },
+
+        flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); },
+
+        rateCard(isKnown) {
+            const currentCardObj = this.data.currentSession[this.data.currentIndex];
+            if (isKnown) {
+                const mainRef = this.data.cards.find(c => c.id === currentCardObj.id);
+                if(mainRef) mainRef.known = true;
+                this.save();
+            } else {
+                this.data.currentSession.push(currentCardObj);
+            }
+            this.data.currentIndex++;
+            this.loadCurrentCard();
+        },
+
+        // --- DASHBOARD (BEZ ZMIAN) ---
+        renderDashboard() {
+            const container = document.getElementById('decks-container');
+            container.innerHTML = '';
+            const categories = this.getUniqueCategories();
+            
+            // Filtrujemy tylko te, które faktycznie mają karty (do wyświetlenia na pulpicie)
+            const activeCategories = categories.filter(cat => this.data.cards.some(c => c.category === cat));
+
+            if(activeCategories.length === 0) container.innerHTML = '<p style="color:var(--text-muted)">Brak zestawów. Dodaj fiszki w edytorze!</p>';
+
+            activeCategories.forEach(cat => {
+                const total = this.data.cards.filter(c => c.category === cat).length;
+                const known = this.data.cards.filter(c => c.category === cat && c.known).length;
+                const progress = Math.round((total === 0 ? 0 : known / total) * 100);
+                const el = document.createElement('div');
+                el.className = 'deck-card';
+                el.onclick = () => this.startStudy(cat);
+                el.innerHTML = `
+                    <div style="font-weight:bold; font-size:1.1em">${cat}</div>
+                    <div style="color:var(--text-muted); font-size:0.9em; margin:5px 0">Opanowano: ${known}/${total}</div>
+                    <div style="width:100%; height:6px; background:#f3f4f6; border-radius:3px;">
+                        <div style="width:${progress}%; height:100%; background:${progress === 100 ? 'var(--success)' : 'var(--primary)'}; border-radius:3px;"></div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        },
+
+        // --- OBSŁUGA FORMULARZA ---
+        handleFormSubmit() {
+            const cat = document.getElementById('input-category').value;
+            const front = document.getElementById('input-front').value;
+            const back = document.getElementById('input-back').value;
+
+            if(!front || !back || !cat) return alert("Wypełnij wszystkie pola!");
+
+            if (this.data.editingId) {
+                const cardIndex = this.data.cards.findIndex(c => c.id === this.data.editingId);
+                if (cardIndex > -1) {
+                    this.data.cards[cardIndex].category = cat;
+                    this.data.cards[cardIndex].front = front;
+                    this.data.cards[cardIndex].back = back;
+                }
+                this.cancelEdit();
+            } else {
+                this.data.cards.push({
+                    id: Date.now(),
+                    category: cat,
+                    front, back, known: false
+                });
+                document.getElementById('input-front').value = '';
+                document.getElementById('input-back').value = '';
+            }
+            this.save();
+        },
+
+        startEdit(id) {
+            const card = this.data.cards.find(c => c.id === id);
+            if (!card) return;
+            this.data.editingId = id;
+            
+            // Upewniamy się, że kategoria jest w select (jeśli była stara)
+            if(!this.data.tempCategories.includes(card.category)) {
+                this.data.tempCategories.push(card.category);
+                this.updateCategorySelect();
+            }
+
+            document.getElementById('input-category').value = card.category;
+            document.getElementById('input-front').value = card.front;
+            document.getElementById('input-back').value = card.back;
+            document.getElementById('form-title').innerText = "Edytuj fiszkę";
+            document.getElementById('btn-save').innerText = "Zapisz zmiany";
+            document.getElementById('btn-cancel').style.display = "block";
+            document.getElementById('editor-form-box').classList.add('edit-mode-active');
+            document.getElementById('editor-form-box').scrollIntoView({ behavior: 'smooth' });
+        },
+
+        cancelEdit() {
+            this.data.editingId = null;
+            document.getElementById('input-front').value = '';
+            document.getElementById('input-back').value = '';
+            document.getElementById('form-title').innerText = "Dodaj nową fiszkę";
+            document.getElementById('btn-save').innerText = "Dodaj";
+            document.getElementById('btn-cancel').style.display = "none";
+            document.getElementById('editor-form-box').classList.remove('edit-mode-active');
+        },
+
+        deleteCard(id) {
+            if(confirm("Usunąć fiszkę?")) {
+                this.data.cards = this.data.cards.filter(c => c.id !== id);
+                if (this.data.editingId === id) this.cancelEdit();
+                this.save();
+            }
+        },
+
+        renderEditorList() {
+            const list = document.getElementById('editor-list');
+            list.innerHTML = '';
+            [...this.data.cards].reverse().forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'card-item';
+                div.innerHTML = `
+                    <div>
+                        <small style="color:var(--primary); font-weight:bold">${card.category}</small>
+                        <div style="font-weight:600">${card.front}</div>
+                        <div style="color:var(--text-muted)">${card.back}</div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-warning" style="padding:5px 10px; font-size:0.8em" onclick="app.startEdit(${card.id})">Edytuj</button>
+                        <button class="btn btn-danger" style="padding:5px 10px; font-size:0.8em" onclick="app.deleteCard(${card.id})">Usuń</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+    };
+
+    app.init();
+</script>
+</body>
+</html>
