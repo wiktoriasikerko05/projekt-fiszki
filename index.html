@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlashMaster Pro (Custom Groups)</title>
     <style>
-        /* --- DESIGN SYSTEM --- */
+        
         :root {
             --primary: #4f46e5;
             --primary-hover: #4338ca;
@@ -71,7 +71,7 @@
         .view { display: none; padding: 20px; flex: 1; overflow-y: auto; }
         .view.active { display: flex; flex-direction: column; }
 
-        /* DASHBOARD */
+       
         .deck-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -225,12 +225,12 @@
             currentSession: [],
             currentIndex: 0,
             editingId: null,
-            // Lista dodatkowych kategorii (żeby nie znikały, jak są puste na chwilę)
+           
             tempCategories: []
         },
 
         init() {
-            this.updateCategorySelect(); // Generowanie listy przy starcie
+            this.updateCategorySelect(); 
             this.renderDashboard();
             this.renderEditorList();
         },
@@ -258,25 +258,25 @@
             this.switchView('view-editor'); 
         },
 
-        // --- ZARZĄDZANIE KATEGORIAMI (NOWOŚĆ) ---
+       
         getUniqueCategories() {
-            // Pobieramy kategorie z istniejących kart
+          
             const fromCards = this.data.cards.map(c => c.category);
-            // Łączymy z tymczasowymi (nowo dodanymi)
+            
             const all = [...fromCards, ...this.data.tempCategories];
-            // Usuwamy duplikaty i puste
+           
             return [...new Set(all)].filter(c => c).sort();
         },
 
         updateCategorySelect() {
             const select = document.getElementById('input-category');
-            const currentVal = select.value; // Zapamiętujemy, co było wybrane
+            const currentVal = select.value; 
             
             select.innerHTML = '';
             
             const categories = this.getUniqueCategories();
             
-            // Jeśli nie ma żadnych kategorii, dodaj domyślną
+   
             if (categories.length === 0) {
                 const opt = document.createElement('option');
                 opt.value = "Ogólne";
@@ -292,7 +292,7 @@
                 select.appendChild(opt);
             });
 
-            // Przywracamy wybór jeśli nadal istnieje
+           
             if (categories.includes(currentVal)) {
                 select.value = currentVal;
             }
@@ -302,15 +302,15 @@
             const newCat = prompt("Podaj nazwę nowej grupy (np. Historia):");
             if (newCat && newCat.trim() !== "") {
                 const cleanName = newCat.trim();
-                // Dodajemy do tymczasowej listy, żeby pojawiło się w select
+               
                 this.data.tempCategories.push(cleanName);
                 this.updateCategorySelect();
-                // Ustawiamy od razu na wybraną
+              
                 document.getElementById('input-category').value = cleanName;
             }
         },
 
-        // --- NAUKA (BEZ ZMIAN) ---
+       
         startStudy(category) {
             let sessionCards = this.data.cards.filter(c => c.category === category && !c.known);
             if(sessionCards.length === 0) {
@@ -361,13 +361,13 @@
             this.loadCurrentCard();
         },
 
-        // --- DASHBOARD (BEZ ZMIAN) ---
+       
         renderDashboard() {
             const container = document.getElementById('decks-container');
             container.innerHTML = '';
             const categories = this.getUniqueCategories();
             
-            // Filtrujemy tylko te, które faktycznie mają karty (do wyświetlenia na pulpicie)
+           
             const activeCategories = categories.filter(cat => this.data.cards.some(c => c.category === cat));
 
             if(activeCategories.length === 0) container.innerHTML = '<p style="color:var(--text-muted)">Brak zestawów. Dodaj fiszki w edytorze!</p>';
@@ -390,7 +390,7 @@
             });
         },
 
-        // --- OBSŁUGA FORMULARZA ---
+      
         handleFormSubmit() {
             const cat = document.getElementById('input-category').value;
             const front = document.getElementById('input-front').value;
@@ -423,7 +423,7 @@
             if (!card) return;
             this.data.editingId = id;
             
-            // Upewniamy się, że kategoria jest w select (jeśli była stara)
+           
             if(!this.data.tempCategories.includes(card.category)) {
                 this.data.tempCategories.push(card.category);
                 this.updateCategorySelect();
@@ -482,4 +482,5 @@
     app.init();
 </script>
 </body>
+
 </html>
